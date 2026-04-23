@@ -64,7 +64,7 @@ def detect_colors():
         _, buffer = cv2.imencode('.jpg', annotated_img)
         annotated_image_data = base64.b64encode(buffer).decode('utf-8')
         
-        # Save detection to SQL Server via db_service
+        # Save detection to Databricks via db_service
         detection = save_detection(
             detection_type='color',
             objects_detected=colors,

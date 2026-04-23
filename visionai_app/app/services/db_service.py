@@ -1,8 +1,9 @@
 """
-db_service.py — Centralized service for saving detection results to SQL Server.
+db_service.py — Centralized service for saving detection results to Databricks Catalog.
 
 Tất cả các chức năng nhận diện trên web app đều gọi qua service này
 để đảm bảo dữ liệu được lưu nhất quán, có error handling và logging đầy đủ.
+Dữ liệu được đẩy thẳng lên Databricks Unity Catalog qua databricks-sqlalchemy.
 """
 
 import os
@@ -29,7 +30,7 @@ def save_detection(
     user_id: int = None
 ) -> Detection | None:
     """
-    Lưu kết quả nhận diện vào bảng dbo.detections trong SQL Server.
+    Lưu kết quả nhận diện vào bảng detections trên Databricks Catalog.
 
     Args:
         detection_type: Loại nhận diện ('camera', 'upload', 'face_upload',
@@ -65,7 +66,7 @@ def save_detection(
         detection.set_objects_detected(objects_detected)
         detection.set_confidence_scores(confidence_scores)
 
-        # Ghi vào SQL Server
+        # Ghi vào Databricks Catalog
         db.session.add(detection)
         db.session.commit()
 
@@ -126,7 +127,7 @@ def save_annotated_image(image, original_filename: str) -> str:
 
 def get_recent_detections(detection_type: str = None, limit: int = 12) -> list:
     """
-    Lấy danh sách detection gần nhất của current_user từ SQL Server.
+    Lấy danh sách detection gần nhất của current_user từ Databricks Catalog.
 
     Args:
         detection_type: Lọc theo loại (None = tất cả)
@@ -154,7 +155,7 @@ def get_recent_detections(detection_type: str = None, limit: int = 12) -> list:
 
 def delete_detection_by_id(detection_id: int, user_id: int = None) -> bool:
     """
-    Xóa một detection theo ID khỏi SQL Server và xóa file ảnh liên quan.
+    Xóa một detection theo ID khỏi Databricks Catalog và xóa file ảnh liên quan.
 
     Returns:
         True nếu xóa thành công, False nếu thất bại

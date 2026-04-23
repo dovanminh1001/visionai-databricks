@@ -114,7 +114,7 @@ def detect_faces_upload():
         _, buffer = cv2.imencode('.jpg', annotated_img)
         annotated_image_data = base64.b64encode(buffer).decode('utf-8')
         
-        # Save detection to SQL Server via db_service
+        # Save detection to Databricks via db_service
         detection = save_detection(
             detection_type='face_upload',
             objects_detected=face_data,
@@ -241,7 +241,7 @@ def detect_faces_camera():
         _, buffer = cv2.imencode('.jpg', annotated_img)
         annotated_image_data = base64.b64encode(buffer).decode('utf-8')
         
-        # Save detection to SQL Server via db_service
+        # Save detection to Databricks via db_service
         detection = save_detection(
             detection_type='face_camera',
             objects_detected=face_data,

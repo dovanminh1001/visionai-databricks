@@ -42,8 +42,15 @@ def create_app(config_class=Config):
     app.register_blueprint(color_detection_bp)
     app.register_blueprint(face_detection_bp)
     
-    # Create database tables
+    # Create database tables on Databricks Catalog
+    # Note: For Databricks, tables should be pre-created via setup_databricks.py
+    # db.create_all() may not work perfectly with Databricks dialect
     with app.app_context():
-        db.create_all()
+        try:
+            db.create_all()
+            print("[DB] Tables created/verified on Databricks Catalog")
+        except Exception as e:
+            print(f"[DB] Warning: db.create_all() skipped — {e}")
+            print("[DB] Run 'python setup_databricks.py' to create tables manually")
     
     return app

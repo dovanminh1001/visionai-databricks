@@ -148,7 +148,7 @@ def detect_image():
                     cv2.putText(img_annotated, label, (x1, y1-10),
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
-        # Save detection + original image to SQL Server via db_service
+        # Save detection + original image to Databricks via db_service
         detection = save_detection(
             detection_type='upload',
             objects_detected=objects_detected,
@@ -278,7 +278,7 @@ def detect_camera():
         _, buffer = cv2.imencode('.jpg', img)
         annotated_image_data = base64.b64encode(buffer).decode('utf-8')
         
-        # Save detection + annotated image to SQL Server via db_service
+        # Save detection + annotated image to Databricks via db_service
         detection = save_detection(
             detection_type='camera',
             objects_detected=objects_detected,

@@ -49,7 +49,7 @@ def login():
         
         if password_ok:
             login_user(user, remember=remember)
-            user.last_login = datetime.utcnow()
+            user.last_login = datetime.now()  # Lưu giờ Việt Nam (GMT+7)
             db.session.commit()
             print(f"[LOGIN] SUCCESS: {user.username} ({user.role})")
             

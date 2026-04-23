@@ -3,6 +3,7 @@ from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 from app.models.detection import Detection, db
 from app.models.user import User
+from app.services.db_service import save_detection, save_annotated_image
 from ultralytics import YOLO
 import cv2
 import os
@@ -132,21 +133,8 @@ def detect_image():
                     })
                     confidence_scores.append(conf)
         
-        # Save detection to database
-        detection = Detection(
-            user_id=current_user.id,
-            image_path=filename,
-            detection_type='upload',
-            processing_time=processing_time
-        )
-        detection.set_objects_detected(objects_detected)
-        detection.set_confidence_scores(confidence_scores)
-        
-        db.session.add(detection)
-        db.session.commit()
-        
         # Draw bounding boxes on image
-        img = cv2.imread(filepath)
+        img_annotated = cv2.imread(filepath)
         for result in results:
             boxes = result.boxes
             if boxes is not None:
@@ -155,26 +143,33 @@ def detect_image():
                     cls = int(box.cls[0])
                     conf = float(box.conf[0])
                     class_name = detection_model.names[cls]
-                    
-                    # Draw rectangle
-                    cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                    
-                    # Draw label with confidence
+                    cv2.rectangle(img_annotated, (x1, y1), (x2, y2), (0, 255, 0), 2)
                     label = f"{class_name}: {conf:.2f}"
-                    cv2.putText(img, label, (x1, y1-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-        
+                    cv2.putText(img_annotated, label, (x1, y1-10),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+
+        # Save detection + original image to SQL Server via db_service
+        detection = save_detection(
+            detection_type='upload',
+            objects_detected=objects_detected,
+            confidence_scores=confidence_scores,
+            image=cv2.imread(filepath),
+            image_prefix='upload',
+            processing_time=processing_time
+        )
+
         # Save annotated image
-        annotated_filename = 'annotated_' + filename
-        annotated_filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], annotated_filename)
-        cv2.imwrite(annotated_filepath, img)
-        
+        annotated_filename = save_annotated_image(img_annotated,
+                                                   os.path.basename(filepath))
+
+        detection_id = detection.id if detection else None
         return jsonify({
             'success': True,
             'objects': objects_detected,
             'confidence_scores': confidence_scores,
             'processing_time': processing_time,
-            'annotated_image': f'/detection/uploads/{annotated_filename}',
-            'detection_id': detection.id
+            'annotated_image': f'/detection/uploads/annotated_{os.path.basename(filepath)}',
+            'detection_id': detection_id
         })
     
     return jsonify({'error': 'Invalid file type'}), 400
@@ -283,33 +278,26 @@ def detect_camera():
         _, buffer = cv2.imencode('.jpg', img)
         annotated_image_data = base64.b64encode(buffer).decode('utf-8')
         
-        # Save detection to database
-        filename = f'camera_{uuid.uuid4()}.jpg'
-        cv2.imwrite(os.path.join(current_app.config['UPLOAD_FOLDER'], filename), img)
-        
-        detection = Detection(
-            user_id=current_user.id,
-            image_path=filename,
+        # Save detection + annotated image to SQL Server via db_service
+        detection = save_detection(
             detection_type='camera',
+            objects_detected=objects_detected,
+            confidence_scores=confidence_scores,
+            image=img,
+            image_prefix='camera',
             processing_time=processing_time
         )
-        detection.set_objects_detected(objects_detected)
-        detection.set_confidence_scores(confidence_scores)
-        
-        print(f"Saving camera detection: {len(objects_detected)} objects for user {current_user.id}")
-        
-        db.session.add(detection)
-        db.session.commit()
-        
-        print(f"Camera detection saved with ID: {detection.id}")
-        
+
+        detection_id = detection.id if detection else None
+        print(f"[detect_camera] Saved to DB | objects={len(objects_detected)} | id={detection_id}")
+
         return jsonify({
             'success': True,
             'objects': objects_detected,
             'confidence_scores': confidence_scores,
             'processing_time': processing_time,
             'annotated_image': f'data:image/jpeg;base64,{annotated_image_data}',
-            'detection_id': detection.id,
+            'detection_id': detection_id,
             'bounding_boxes': bounding_boxes
         })
         

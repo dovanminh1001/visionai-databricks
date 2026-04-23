@@ -8,6 +8,7 @@ import uuid
 import pickle
 from datetime import datetime
 from app.models.detection import Detection, db
+from app.services.db_service import save_detection
 from werkzeug.utils import secure_filename
 
 face_detection_bp = Blueprint('face_detection', __name__, url_prefix='/face-detection')
@@ -113,24 +114,16 @@ def detect_faces_upload():
         _, buffer = cv2.imencode('.jpg', annotated_img)
         annotated_image_data = base64.b64encode(buffer).decode('utf-8')
         
-        # Save detection to database
-        try:
-            from flask_login import current_user
-            user_id = current_user.id if current_user.is_authenticated else 1
-        except:
-            user_id = 1
-            
-        detection = Detection(
-            user_id=user_id,
-            image_path=filename,
+        # Save detection to SQL Server via db_service
+        detection = save_detection(
             detection_type='face_upload',
+            objects_detected=face_data,
+            confidence_scores=[face['confidence'] for face in face_data],
+            image=img,
+            image_prefix='face_upload',
             processing_time=0.0
         )
-        detection.set_objects_detected(face_data)
-        detection.set_confidence_scores([face['confidence'] for face in face_data])
-        
-        db.session.add(detection)
-        db.session.commit()
+        detection_id = detection.id if detection else None
         
         return jsonify({
             'success': True,
@@ -138,13 +131,14 @@ def detect_faces_upload():
             'face_count': len(face_data),
             'recognized_count': len([n for n in recognized_names if n != 'Unknown']),
             'annotated_image': f'data:image/jpeg;base64,{annotated_image_data}',
-            'detection_id': detection.id
+            'detection_id': detection_id
         })
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 @face_detection_bp.route('/detect-camera', methods=['POST'])
+@login_required
 def detect_faces_camera():
     try:
         print("DEBUG: Camera detection request received")
@@ -247,34 +241,25 @@ def detect_faces_camera():
         _, buffer = cv2.imencode('.jpg', annotated_img)
         annotated_image_data = base64.b64encode(buffer).decode('utf-8')
         
-        # Save detection to database
-        print("DEBUG: Saving to database")
-        try:
-            from flask_login import current_user
-            user_id = current_user.id if current_user.is_authenticated else 1
-        except:
-            user_id = 1
-            
-        detection = Detection(
-            user_id=user_id,
-            image_path=filename,
+        # Save detection to SQL Server via db_service
+        detection = save_detection(
             detection_type='face_camera',
+            objects_detected=face_data,
+            confidence_scores=[face['confidence'] for face in face_data],
+            image=img,
+            image_prefix='face_camera',
             processing_time=0.0
         )
-        detection.set_objects_detected(face_data)
-        detection.set_confidence_scores([face['confidence'] for face in face_data])
+        detection_id = detection.id if detection else None
         
-        db.session.add(detection)
-        db.session.commit()
-        
-        print("DEBUG: Camera detection completed successfully")
+        print("[detect_faces_camera] Saved to DB | faces=%d | id=%s" % (len(face_data), detection_id))
         return jsonify({
             'success': True,
             'faces': face_data,
             'face_count': len(face_data),
             'recognized_count': len([n for n in recognized_names if n != 'Unknown']),
             'annotated_image': f'data:image/jpeg;base64,{annotated_image_data}',
-            'detection_id': detection.id
+            'detection_id': detection_id
         })
         
     except Exception as e:

@@ -7,6 +7,7 @@ import os
 import uuid
 from datetime import datetime
 from app.models.detection import Detection, db
+from app.services.db_service import save_detection
 from werkzeug.utils import secure_filename
 
 color_detection_bp = Blueprint('color_detection', __name__, url_prefix='/color-detection')
@@ -63,24 +64,22 @@ def detect_colors():
         _, buffer = cv2.imencode('.jpg', annotated_img)
         annotated_image_data = base64.b64encode(buffer).decode('utf-8')
         
-        # Save detection to database
-        detection = Detection(
-            user_id=current_user.id,
-            image_path=filename,
+        # Save detection to SQL Server via db_service
+        detection = save_detection(
             detection_type='color',
-            processing_time=0.0  # Will be calculated if needed
+            objects_detected=colors,
+            confidence_scores=[color['percentage'] for color in colors],
+            image=img,
+            image_prefix='color',
+            processing_time=0.0
         )
-        detection.set_objects_detected(colors)
-        detection.set_confidence_scores([color['percentage'] for color in colors])
-        
-        db.session.add(detection)
-        db.session.commit()
+        detection_id = detection.id if detection else None
         
         return jsonify({
             'success': True,
             'colors': colors,
             'annotated_image': f'data:image/jpeg;base64,{annotated_image_data}',
-            'detection_id': detection.id
+            'detection_id': detection_id
         })
         
     except Exception as e:

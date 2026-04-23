@@ -13,7 +13,7 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(20), default='user')  # 'admin', 'user'
     is_active = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.now)  # Lưu giờ Việt Nam (GMT+7)
     last_login = db.Column(db.DateTime)
     birth_date = db.Column(db.Date)  # Ngày tháng năm sinh
     location = db.Column(db.String(200))  # Nơi ở hiện tại

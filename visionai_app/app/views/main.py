@@ -82,11 +82,6 @@ def history():
                                .order_by(Detection.timestamp.desc())\
                                .paginate(page=page, per_page=per_page, error_out=False)
     
-    # Add 7 hours to each detection timestamp for GMT+7
-    from datetime import timedelta
-    for detection in detections.items:
-        detection.timestamp = detection.timestamp + timedelta(hours=7)
-    
     return render_template('history.html', detections=detections)
 
 @main_bp.route('/api/detection-details/<int:detection_id>')
@@ -95,10 +90,6 @@ def get_detection_details(detection_id):
     detection = Detection.query.filter_by(id=detection_id, user_id=current_user.id).first()
     if not detection:
         return jsonify({'success': False, 'error': 'Detection not found'}), 404
-    
-    # Add 7 hours for GMT+7
-    from datetime import timedelta
-    detection.timestamp = detection.timestamp + timedelta(hours=7)
     
     # Get and process objects
     raw_objects = detection.get_objects_detected()
@@ -219,10 +210,6 @@ def export_single_detection(detection_id):
         if not detection:
             return jsonify({'success': False, 'error': 'Detection not found'}), 404
         
-        # Add 7 hours for GMT+7
-        from datetime import timedelta
-        detection.timestamp = detection.timestamp + timedelta(hours=7)
-        
         # Get objects
         objects = detection.get_objects_detected()
         
@@ -307,11 +294,6 @@ def export_detections():
         
         # Get all user detections
         detections = Detection.query.filter_by(user_id=current_user.id).order_by(Detection.timestamp.desc()).all()
-        
-        # Add 7 hours for GMT+7
-        from datetime import timedelta
-        for detection in detections:
-            detection.timestamp = detection.timestamp + timedelta(hours=7)
         
         # Create CSV content
         output = StringIO()

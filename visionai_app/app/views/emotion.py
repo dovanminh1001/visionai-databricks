@@ -9,6 +9,7 @@ import os
 from werkzeug.utils import secure_filename
 from app.models.detection import Detection
 from app import db
+from app.services.db_service import save_detection
 from functools import lru_cache
 
 emotion_bp = Blueprint('emotion', __name__, url_prefix='/emotion')
@@ -115,34 +116,16 @@ def detect_emotion_upload():
             _, buffer = cv2.imencode('.jpg', annotated_img)
             annotated_image_data = base64.b64encode(buffer).decode('utf-8')
             
-            # Save detection to database
-            filename = f'emotion_{uuid.uuid4()}.jpg'
-            cv2.imwrite(os.path.join(current_app.config['UPLOAD_FOLDER'], filename), img)
-            
-            detection = Detection(
-                user_id=current_user.id,
-                image_path=filename,
+            # Save detection to SQL Server via db_service
+            detection = save_detection(
                 detection_type='emotion',
+                objects_detected=objects_detected,
+                confidence_scores=confidence_scores,
+                image=img,
+                image_prefix='emotion',
                 processing_time=processing_time
             )
-            
-            # Prepare data for database
-            objects_detected = []
-            confidence_scores = []
-            
-            # Only create bounding box for dominant emotion
-            objects_detected.append({
-                'name': dominant_emotion,
-                'confidence': emotion_results['confidence'],
-                'box': face_box
-            })
-            confidence_scores.append(emotion_results['confidence'])
-            
-            detection.set_objects_detected(objects_detected)
-            detection.set_confidence_scores(confidence_scores)
-            
-            db.session.add(detection)
-            db.session.commit()
+            detection_id = detection.id if detection else None
             
             # Convert emotions to expected format
             emotions_list = []
@@ -159,7 +142,7 @@ def detect_emotion_upload():
                 'confidence': emotion_results['confidence'],
                 'emotions': emotions_list,
                 'processing_time': processing_time,
-                'detection_id': detection.id
+                'detection_id': detection_id
             })
             
         except Exception as e:
@@ -259,23 +242,16 @@ def detect_emotion_camera():
         # Cache the result
         cache_emotion_result(image_hash, result)
         
-        # Save detection to database (only for new detections, not cached)
+        # Save detection to SQL Server via db_service (only non-cached frames)
         if not cached_result:
-            filename = f'emotion_camera_{uuid.uuid4()}.jpg'
-            cv2.imwrite(os.path.join(current_app.config['UPLOAD_FOLDER'], filename), img)
-            
-            detection = Detection(
-                user_id=current_user.id,
-                image_path=filename,
+            detection = save_detection(
                 detection_type='emotion',
+                objects_detected=objects_detected,
+                confidence_scores=confidence_scores,
+                image=img,
+                image_prefix='emotion_camera',
                 processing_time=processing_time
             )
-            
-            detection.set_objects_detected(objects_detected)
-            detection.set_confidence_scores(confidence_scores)
-            
-            db.session.add(detection)
-            db.session.commit()
         
         return jsonify(result)
         

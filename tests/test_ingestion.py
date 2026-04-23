@@ -21,7 +21,3 @@ def test_imports():
     import src.processing.image_processing
     import src.training.yolov8_training
     assert True
-
-def test_intentional_failure():
-    """Bố trí một lỗi cố ý để xem GitHub Actions báo đỏ (Failed)"""
-    assert False, "Đây là lỗi cố ý để test CI/CD pipeline!"

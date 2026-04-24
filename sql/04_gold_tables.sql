@@ -1,30 +1,33 @@
 -- ============================================
--- BƯỚC 5: GOLD - Dữ liệu tổng hợp cho báo cáo
--- 3 bảng: by_camera, by_shift, hourly_activity
+-- BƯỚC 4: GOLD - Tổng hợp cho Dashboard
+-- 4 bảng Gold siêu nhẹ, sẵn sàng vẽ biểu đồ
 -- ============================================
 
--- Gold 1: Thống kê theo Camera
-CREATE OR REPLACE TABLE gold.detection_by_camera AS
-SELECT
-    camera_id, location, location_type,
-    COUNT(*)                    AS total_captures,
-    ROUND(AVG(file_size_kb), 0) AS avg_file_size_kb,
-    MIN(capture_time)           AS first_capture,
-    MAX(capture_time)           AS last_capture,
-    SUM(CASE WHEN quality_bucket = 'HIGH' THEN 1 ELSE 0 END)   AS high_quality_count,
-    SUM(CASE WHEN quality_bucket = 'MEDIUM' THEN 1 ELSE 0 END) AS medium_quality_count,
-    SUM(CASE WHEN quality_bucket = 'LOW' THEN 1 ELSE 0 END)    AS low_quality_count
-FROM silver.camera_processed
-GROUP BY camera_id, location, location_type;
+USE CATALOG visionai_catalog;
 
--- Gold 2: Thống kê theo Ca làm việc
+CREATE SCHEMA IF NOT EXISTS gold;
+
+-- Gold 1: Thống kê theo Chức năng AI (Bar Chart)
+CREATE OR REPLACE TABLE gold.detection_by_feature AS
+SELECT
+    ai_feature,
+    detection_type,
+    COUNT(*)                        AS total_detections,
+    ROUND(AVG(processing_time), 3)  AS avg_processing_sec,
+    COUNT(DISTINCT username)        AS unique_users
+FROM silver.detections_enriched
+GROUP BY ai_feature, detection_type
+ORDER BY total_detections DESC;
+
+
+-- Gold 2: Thống kê theo Ca làm việc (Pie Chart)
 CREATE OR REPLACE TABLE gold.detection_by_shift AS
 SELECT
     time_shift,
-    COUNT(*)                    AS total_captures,
-    COUNT(DISTINCT camera_id)   AS active_cameras,
-    ROUND(AVG(file_size_kb), 0) AS avg_file_size_kb
-FROM silver.camera_processed
+    COUNT(*)                        AS total_detections,
+    COUNT(DISTINCT username)        AS active_users,
+    ROUND(AVG(processing_time), 3)  AS avg_processing_sec
+FROM silver.detections_enriched
 GROUP BY time_shift
 ORDER BY
     CASE time_shift
@@ -34,20 +37,48 @@ ORDER BY
         WHEN 'NIGHT'     THEN 4
     END;
 
--- Gold 3: Tổng hợp theo giờ (cho biểu đồ)
+
+-- Gold 3: Hoạt động theo Giờ (Line Chart)
 CREATE OR REPLACE TABLE gold.hourly_activity AS
 SELECT
     hour_of_day,
-    COUNT(*)                  AS total_captures,
-    COUNT(DISTINCT camera_id) AS active_cameras
-FROM silver.camera_processed
+    COUNT(*)                   AS total_detections,
+    COUNT(DISTINCT username)   AS active_users
+FROM silver.detections_enriched
 GROUP BY hour_of_day
 ORDER BY hour_of_day;
 
+
+-- Gold 4: Hiệu suất xử lý AI (Stacked Bar)
+CREATE OR REPLACE TABLE gold.speed_analysis AS
+SELECT
+    speed_grade,
+    ai_feature,
+    COUNT(*)                        AS total_detections,
+    ROUND(AVG(processing_time), 3)  AS avg_time_sec,
+    ROUND(MIN(processing_time), 3)  AS fastest_sec,
+    ROUND(MAX(processing_time), 3)  AS slowest_sec
+FROM silver.detections_enriched
+GROUP BY speed_grade, ai_feature
+ORDER BY avg_time_sec;
+
+
 -- Kiểm tra kết quả Gold
-SELECT '--- BY CAMERA ---' AS report;
-SELECT * FROM gold.detection_by_camera;
+SELECT '--- BY FEATURE ---' AS report;
+
+SELECT * FROM gold.detection_by_feature;
+
+
 SELECT '--- BY SHIFT ---' AS report;
+
 SELECT * FROM gold.detection_by_shift;
+
+
 SELECT '--- BY HOUR ---' AS report;
+
 SELECT * FROM gold.hourly_activity;
+
+
+SELECT '--- BY SPEED ---' AS report;
+
+SELECT * FROM gold.speed_analysis;

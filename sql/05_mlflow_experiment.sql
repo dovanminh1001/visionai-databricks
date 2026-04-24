@@ -3,6 +3,12 @@
 -- Log thí nghiệm huấn luyện mô hình YOLOv8
 -- ============================================
 
+USE CATALOG visionai_catalog;
+
+
+CREATE SCHEMA IF NOT EXISTS gold;
+
+
 CREATE OR REPLACE TABLE gold.ml_experiment_log (
     run_id          STRING,
     experiment_name STRING,
@@ -20,7 +26,8 @@ CREATE OR REPLACE TABLE gold.ml_experiment_log (
     training_time   STRING,
     status          STRING,
     created_at      TIMESTAMP DEFAULT current_timestamp()
-);
+) TBLPROPERTIES ('delta.feature.allowColumnDefaults' = 'supported');
+
 
 INSERT INTO gold.ml_experiment_log
     (run_id, experiment_name, model_name, model_version, learning_rate, batch_size, epochs, img_size, precision_score, recall_score, map50, map50_95, dataset_size, training_time, status)
@@ -30,6 +37,7 @@ VALUES
     ('run_003', '/VisionAI/yolov8', 'yolov8s', 'v2.0', 0.005, 32, 100, 640, 0.85, 0.81, 0.83, 0.61, 1000, '45m 00s', 'COMPLETED'),
     ('run_004', '/VisionAI/yolov8', 'yolov8s', 'v2.1', 0.001, 32, 150, 640, 0.89, 0.86, 0.88, 0.67, 1000, '1h 05m',  'COMPLETED'),
     ('run_005', '/VisionAI/yolov8', 'yolov8m', 'v3.0', 0.001, 16, 200, 640, 0.92, 0.89, 0.91, 0.72, 2000, '2h 30m',  'COMPLETED');
+
 
 -- Xem kết quả training
 SELECT

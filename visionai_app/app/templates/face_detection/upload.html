@@ -442,9 +442,8 @@ async function loadRecentUploadDetections() {
                 const faces = objects.filter(obj => obj.name && obj.name !== 'Unknown');
                 const recognizedCount = faces.length;
                 
-                // Add 7 hours for GMT+7
+                // Timestamp is already in local time
                 const timestamp = new Date(detection.timestamp);
-                timestamp.setHours(timestamp.getHours() + 7);
                 
                 html += `
                     <div class="bg-gray-800 rounded-lg overflow-hidden">

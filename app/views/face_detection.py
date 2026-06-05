@@ -100,21 +100,7 @@ def detect_faces_upload():
         # Create annotated image
         annotated_img = draw_face_boxes(img, faces, recognized_names, confidence_scores)
         
-        # Save original image
-        filename = f'face_upload_{uuid.uuid4()}.jpg'
-        filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
-        cv2.imwrite(filepath, img)
-        
-        # Save annotated image
-        annotated_filename = f'annotated_{filename}'
-        annotated_filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], annotated_filename)
-        cv2.imwrite(annotated_filepath, annotated_img)
-        
-        # Convert annotated image back to base64
-        _, buffer = cv2.imencode('.jpg', annotated_img)
-        annotated_image_data = base64.b64encode(buffer).decode('utf-8')
-        
-        # Save detection to SQL Server via db_service
+        # Save detection to Databricks via db_service
         detection = save_detection(
             detection_type='face_upload',
             objects_detected=face_data,
@@ -124,6 +110,14 @@ def detect_faces_upload():
             processing_time=0.0
         )
         detection_id = detection.id if detection else None
+        
+        if detection:
+            from app.services.db_service import save_annotated_image
+            save_annotated_image(annotated_img, detection.image_path)
+        
+        # Convert annotated image back to base64
+        _, buffer = cv2.imencode('.jpg', annotated_img)
+        annotated_image_data = base64.b64encode(buffer).decode('utf-8')
         
         return jsonify({
             'success': True,
@@ -224,24 +218,7 @@ def detect_faces_camera():
         print("DEBUG: Creating annotated image")
         annotated_img = draw_face_boxes(img, faces, recognized_names, confidence_scores)
         
-        # Save original image
-        print("DEBUG: Saving original image")
-        filename = f'face_camera_{uuid.uuid4()}.jpg'
-        filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
-        cv2.imwrite(filepath, img)
-        
-        # Save annotated image
-        print("DEBUG: Saving annotated image")
-        annotated_filename = f'annotated_{filename}'
-        annotated_filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], annotated_filename)
-        cv2.imwrite(annotated_filepath, annotated_img)
-        
-        # Convert annotated image back to base64
-        print("DEBUG: Converting to base64")
-        _, buffer = cv2.imencode('.jpg', annotated_img)
-        annotated_image_data = base64.b64encode(buffer).decode('utf-8')
-        
-        # Save detection to SQL Server via db_service
+        # Save detection to Databricks via db_service
         detection = save_detection(
             detection_type='face_camera',
             objects_detected=face_data,
@@ -251,6 +228,15 @@ def detect_faces_camera():
             processing_time=0.0
         )
         detection_id = detection.id if detection else None
+        
+        if detection:
+            from app.services.db_service import save_annotated_image
+            save_annotated_image(annotated_img, detection.image_path)
+        
+        # Convert annotated image back to base64
+        print("DEBUG: Converting to base64")
+        _, buffer = cv2.imencode('.jpg', annotated_img)
+        annotated_image_data = base64.b64encode(buffer).decode('utf-8')
         
         print("[detect_faces_camera] Saved to DB | faces=%d | id=%s" % (len(face_data), detection_id))
         return jsonify({
@@ -269,7 +255,10 @@ def detect_faces_camera():
         return jsonify({'error': str(e)}), 500
 
 @face_detection_bp.route('/add-face', methods=['POST'])
+@login_required
 def add_face():
+    if not current_user.is_admin():
+        return jsonify({'error': 'Unauthorized. Admin access required.'}), 403
     try:
         data = request.get_json()
         image_data = data.get('image')
@@ -413,6 +402,8 @@ def get_known_faces():
 @face_detection_bp.route('/remove-face', methods=['POST'])
 @login_required
 def remove_face():
+    if not current_user.is_admin():
+        return jsonify({'error': 'Unauthorized. Admin access required.'}), 403
     try:
         data = request.get_json()
         name = data.get('name', '').strip()

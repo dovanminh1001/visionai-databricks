@@ -22,52 +22,55 @@
     
     <!-- Main Content -->
     <div class="space-y-6">
-        <!-- Camera Section -->
-        <div class="card p-6 rounded-lg">
-            <h2 class="text-xl font-bold mb-4">Camera Feed</h2>
-            
-            <!-- Video Container -->
-            <div class="relative bg-gray-900 rounded-lg overflow-hidden" style="aspect-ratio: 16/9;">
-                <video id="videoElement" class="w-full h-full object-cover" autoplay></video>
-                <canvas id="canvasElement" class="absolute top-0 left-0 w-full h-full" style="display: none;"></canvas>
+        <!-- Two Column Layout for Camera & Stats -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Camera Section -->
+            <div class="card p-6 rounded-lg lg:col-span-2">
+                <h2 class="text-xl font-bold mb-4">Camera Feed</h2>
                 
-                <!-- Camera Status -->
-                <div id="cameraStatus" class="absolute top-4 left-4 bg-red-600 px-3 py-1 rounded-full text-white text-sm">
-                    <i class="fas fa-circle mr-2"></i>Camera Off
+                <!-- Video Container -->
+                <div class="relative bg-gray-900 rounded-lg overflow-hidden" style="aspect-ratio: 4/3; max-height: 500px; margin: 0 auto;">
+                    <video id="videoElement" class="w-full h-full object-cover" autoplay></video>
+                    <canvas id="canvasElement" class="absolute top-0 left-0 w-full h-full" style="display: none;"></canvas>
+                    
+                    <!-- Camera Status -->
+                    <div id="cameraStatus" class="absolute top-4 left-4 bg-red-600 px-3 py-1 rounded-full text-white text-sm">
+                        <i class="fas fa-circle mr-2"></i>Camera Off
+                    </div>
+                    
+                    <!-- Detection Status -->
+                    <div id="detectionStatus" class="absolute top-4 right-4 bg-gray-800 px-3 py-1 rounded-full text-white text-sm hidden">
+                        <i class="fas fa-search mr-2"></i>Detecting...
+                    </div>
+                    
+                    <!-- Real-time Detection Info -->
+                    <div id="realtimeInfo" class="absolute bottom-4 left-4 bg-gray-800 px-3 py-1 rounded-full text-white text-sm hidden">
+                        <span id="fpsCounter">0 FPS</span> | <span id="faceCounter">0 faces</span>
+                    </div>
                 </div>
                 
-                <!-- Detection Status -->
-                <div id="detectionStatus" class="absolute top-4 right-4 bg-gray-800 px-3 py-1 rounded-full text-white text-sm hidden">
-                    <i class="fas fa-search mr-2"></i>Detecting...
-                </div>
-                
-                <!-- Real-time Detection Info -->
-                <div id="realtimeInfo" class="absolute bottom-4 left-4 bg-gray-800 px-3 py-1 rounded-full text-white text-sm hidden">
-                    <span id="fpsCounter">0 FPS</span> | <span id="faceCounter">0 faces</span>
+                <!-- Camera Controls -->
+                <div class="mt-4 flex space-x-4">
+                    <button id="startCamera" class="btn-primary px-6 py-2 rounded-lg text-white">
+                        <i class="fas fa-video mr-2"></i>Start Camera
+                    </button>
+                    <button id="stopCamera" class="bg-red-600 hover:bg-red-700 px-6 py-2 rounded-lg text-white" disabled>
+                        <i class="fas fa-stop mr-2"></i>Stop Camera
+                    </button>
+                    <button id="toggleDetection" class="bg-green-600 hover:bg-green-700 px-6 py-2 rounded-lg text-white" disabled>
+                        <i class="fas fa-search mr-2"></i>Start Detection
+                    </button>
                 </div>
             </div>
             
-            <!-- Camera Controls -->
-            <div class="mt-4 flex space-x-4">
-                <button id="startCamera" class="btn-primary px-6 py-2 rounded-lg text-white">
-                    <i class="fas fa-video mr-2"></i>Start Camera
-                </button>
-                <button id="stopCamera" class="bg-red-600 hover:bg-red-700 px-6 py-2 rounded-lg text-white" disabled>
-                    <i class="fas fa-stop mr-2"></i>Stop Camera
-                </button>
-                <button id="toggleDetection" class="bg-green-600 hover:bg-green-700 px-6 py-2 rounded-lg text-white" disabled>
-                    <i class="fas fa-search mr-2"></i>Start Detection
-                </button>
-            </div>
-        </div>
-        
-        <!-- Detection Stats -->
-        <div class="card p-6 rounded-lg">
-            <h2 class="text-xl font-bold mb-4">Detection Status</h2>
-            <div id="detectionStats" class="space-y-4">
-                <div class="text-center text-gray-400 py-8">
-                    <i class="fas fa-chart-line text-6xl mb-4"></i>
-                    <p>Start detection to see stats</p>
+            <!-- Detection Stats -->
+            <div class="card p-6 rounded-lg lg:col-span-1 flex flex-col">
+                <h2 class="text-xl font-bold mb-4">Detection Status</h2>
+                <div id="detectionStats" class="flex-grow space-y-4 flex flex-col justify-center">
+                    <div class="text-center text-gray-400 py-8">
+                        <i class="fas fa-chart-line text-6xl mb-4"></i>
+                        <p>Start detection to see stats</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -325,6 +328,7 @@ function updateFPS() {
 
 async function performRealTimeDetection() {
     if (!stream || !isDetecting || isProcessingFrame) return;
+    if (videoElement.videoWidth === 0 || videoElement.videoHeight === 0) return;
     
     // Frame skipping - only process if enough time has passed
     const currentTime = performance.now();
@@ -350,7 +354,7 @@ async function performRealTimeDetection() {
         
         // Send scale factor to server for coordinate adjustment
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
         
         const response = await fetch('/face-detection/detect-camera', {
             method: 'POST',
@@ -390,8 +394,8 @@ async function performRealTimeDetection() {
                 detectionStatus.className = 'absolute top-4 right-4 bg-green-600 px-3 py-1 rounded-full text-white text-sm';
             }
             
-            // Refresh recent detections less frequently
-            if (frameCount % 15 === 0) { // Every 5 seconds at 3 FPS
+            // Refresh recent detections immediately when a new detection is saved
+            if (result.detection_id) {
                 loadRecentDetections();
             }
         }
@@ -416,8 +420,6 @@ function showDetectionOverlay(faces, scaleFactor = 1.0) {
         overlayCanvas = document.createElement('canvas');
         overlayCanvas.id = 'overlayCanvas';
         overlayCanvas.style.position = 'absolute';
-        overlayCanvas.style.top = '0';
-        overlayCanvas.style.left = '0';
         overlayCanvas.style.pointerEvents = 'none';
         overlayCanvas.style.zIndex = '10';
         
@@ -427,44 +429,27 @@ function showDetectionOverlay(faces, scaleFactor = 1.0) {
         videoContainer.appendChild(overlayCanvas);
     }
     
-    // Set overlay size to EXACTLY match video display size
-    const videoRect = videoElement.getBoundingClientRect();
-    overlayCanvas.width = videoRect.width;
-    overlayCanvas.height = videoRect.height;
+    // Set internal resolution of overlay canvas to match video stream resolution
+    overlayCanvas.width = videoElement.videoWidth || 640;
+    overlayCanvas.height = videoElement.videoHeight || 480;
     
-    console.log(`Video rect: ${videoRect.width}x${videoRect.height}`);
-    console.log(`Overlay canvas size: ${overlayCanvas.width}x${overlayCanvas.height}`);
+    // Set display size of overlay canvas to EXACTLY match video display size
+    const videoRect = videoElement.getBoundingClientRect();
+    overlayCanvas.style.width = videoRect.width + 'px';
+    overlayCanvas.style.height = videoRect.height + 'px';
+    overlayCanvas.style.top = videoElement.offsetTop + 'px';
+    overlayCanvas.style.left = videoElement.offsetLeft + 'px';
     
     const ctx = overlayCanvas.getContext('2d');
     ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
     
-    // Draw bounding boxes for each face (scale coordinates to match display)
+    // Draw bounding boxes for each face (draw directly using backend coordinates since resolutions match)
     faces.forEach((face, index) => {
-        console.log(`Face ${index}:`, face);
-        console.log(`Face ${index} box:`, face.box);
-        console.log(`Face ${index} box type:`, typeof face.box);
-        console.log(`Face ${index} box length:`, face.box ? face.box.length : 'undefined');
-        
         if (face.box) {
-            // Calculate scale factor from backend resolution to display size
-            const scaleX = videoRect.width / videoElement.videoWidth;
-            const scaleY = videoRect.height / videoElement.videoHeight;
-            
-            console.log(`Scale factors: scaleX=${scaleX}, scaleY=${scaleY}`);
-            console.log(`Backend resolution: ${videoElement.videoWidth}x${videoElement.videoHeight}`);
-            console.log(`Display size: ${videoRect.width}x${videoRect.height}`);
-            
-            // Scale coordinates to match display
-            const [backendX, backendY, backendW, backendH] = face.box;
-            const x = backendX * scaleX;
-            const y = backendY * scaleY;
-            const w = backendW * scaleX;
-            const h = backendH * scaleY;
-            
-            console.log(`Drawing box for face ${index}: backend(${backendX}, ${backendY}, ${backendW}, ${backendH}) -> display(${x}, ${y}, ${w}, ${h})`);
+            const [x, y, w, h] = face.box;
             
             // Validate coordinates
-            if (typeof x === 'number' && typeof y === 'number' && typeof w === 'number' && typeof h === 'number') {
+            if (Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(w) && Number.isFinite(h)) {
                 // Choose color based on recognition
                 const isRecognized = face.name && face.name !== 'Unknown';
                 ctx.strokeStyle = isRecognized ? '#00ff00' : '#ff0000'; // Green for recognized, red for unknown
@@ -481,18 +466,13 @@ function showDetectionOverlay(faces, scaleFactor = 1.0) {
                 
                 // Background rectangle for label (position above box)
                 ctx.fillStyle = isRecognized ? '#00ff00' : '#ff0000';
-                ctx.fillRect(x, y - 30, textWidth + 10, 25);
+                const labelY = y - 10 > 25 ? y - 30 : y + h + 5;
+                ctx.fillRect(x, labelY, textWidth + 10, 25);
                 
                 // Text
                 ctx.fillStyle = '#ffffff';
-                ctx.fillText(label, x + 5, y - 15);
-                
-                console.log(`Successfully drew face ${index}: ${displayName} at display coords (${x}, ${y}, ${w}, ${h}) with confidence ${confidence}%`);
-            } else {
-                console.error(`Invalid coordinates for face ${index}:`, face.box);
+                ctx.fillText(label, x + 5, labelY + 18);
             }
-        } else {
-            console.error(`No box found for face ${index}:`, face);
         }
     });
 }
@@ -542,35 +522,41 @@ function displayDetectionStats(faces, faceCount, recognizedCount) {
         </div>
     `;
     
-    // Individual face details (show max 3)
-    const recentFaces = faces.slice(0, 3);
-    recentFaces.forEach((face, index) => {
-        const isRecognized = face.name !== 'Unknown';
-        const confidence = face.confidence ? (face.confidence * 100).toFixed(1) : 0;
-        
-        html += `
-            <div class="bg-gray-800 rounded-lg p-3">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center space-x-3">
-                        <div class="w-8 h-8 rounded-full ${isRecognized ? 'bg-green-600' : 'bg-yellow-600'} flex items-center justify-center">
-                            <i class="fas fa-user text-white text-sm"></i>
+    // Detected People list
+    if (faces.length > 0) {
+        html += `<div class="mt-4"><div class="text-sm font-semibold text-gray-400 mb-2">Detected People:</div><div class="space-y-2">`;
+        faces.forEach((face, index) => {
+            const isRecognized = face.name !== 'Unknown';
+            const confidence = face.confidence ? (face.confidence * 100).toFixed(1) : 0;
+            
+            html += `
+                <div class="bg-gray-800 rounded-lg p-3 border-l-4 ${isRecognized ? 'border-green-500' : 'border-yellow-500'}">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 rounded-full ${isRecognized ? 'bg-green-600' : 'bg-yellow-600'} flex items-center justify-center">
+                                <i class="fas fa-user text-white text-sm"></i>
+                            </div>
+                            <div>
+                                <div class="font-bold text-white text-sm">${face.name}</div>
+                                <div class="text-xs text-gray-400">${isRecognized ? 'Confidence: ' + confidence + '%' : 'Unrecognized'}</div>
+                            </div>
                         </div>
-                        <div>
-                            <div class="font-medium text-white text-sm">${face.name}</div>
-                            <div class="text-xs text-gray-400">${isRecognized ? confidence + '%' : 'Unknown'}</div>
-                        </div>
+                        ${isRecognized ? 
+                            '<span class="bg-green-900/50 text-green-400 text-xs px-2 py-1 rounded-full border border-green-500/30 font-medium">Recognized</span>' :
+                            '<span class="bg-yellow-900/50 text-yellow-400 text-xs px-2 py-1 rounded-full border border-yellow-500/30 font-medium">Unknown</span>'
+                        }
                     </div>
-                    ${isRecognized ? 
-                        '<div class="text-green-400"><i class="fas fa-check-circle"></i></div>' :
-                        '<div class="text-yellow-400"><i class="fas fa-question-circle"></i></div>'
-                    }
                 </div>
+            `;
+        });
+        html += `</div></div>`;
+    } else {
+        html += `
+            <div class="text-center text-gray-400 py-8 flex-grow flex flex-col justify-center">
+                <i class="fas fa-user-slash text-5xl mb-3"></i>
+                <p>No faces currently in view</p>
             </div>
         `;
-    });
-    
-    if (faces.length > 3) {
-        html += `<div class="text-center text-gray-400 text-xs">+${faces.length - 3} more faces</div>`;
     }
     
     html += '</div>';
@@ -632,21 +618,21 @@ async function loadRecentDetections() {
                     }
                 }
                 
+                const totalFaces = objects.length;
                 const faces = objects.filter(obj => obj.name && obj.name !== 'Unknown');
                 const recognizedCount = faces.length;
                 
-                // Add 7 hours for GMT+7
+                // Timestamp is already parsed in local time by the browser
                 const timestamp = new Date(detection.timestamp);
-                timestamp.setHours(timestamp.getHours() + 7);
                 
                 html += `
                     <div class="bg-gray-800 rounded-lg overflow-hidden">
-                        <img src="/detection/uploads/${detection.image_path}" alt="Face Detection" class="w-full h-40 object-cover">
+                        <img src="/detection/uploads/annotated_${detection.image_path}" alt="Face Detection" class="w-full h-40 object-cover" onerror="this.src='/detection/uploads/${detection.image_path}'">
                         <div class="p-4">
                             <div class="flex items-center justify-between mb-2">
                                 <span class="text-white font-medium">Camera Detection</span>
                                 <span class="bg-green-600 text-white text-xs px-2 py-1 rounded-full">
-                                    ${recognizedCount} face(s)
+                                    ${totalFaces} face(s)
                                 </span>
                             </div>
                             <p class="text-sm text-gray-400 mb-3">${timestamp.toLocaleDateString('vi-VN')} ${timestamp.toLocaleTimeString('vi-VN')}</p>

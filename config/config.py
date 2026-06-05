@@ -7,11 +7,20 @@ load_dotenv()
 
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'your-secret-key-here-change-in-production'
-    # SQL Server connection (required - set DATABASE_URL in .env)
+    # Databricks Unity Catalog connection (required - set DATABASE_URL in .env)
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL')
     if not SQLALCHEMY_DATABASE_URI:
         raise ValueError("DATABASE_URL environment variable is not set. Please configure it in .env file.")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    
+    # Engine options for Databricks (higher timeout for cloud connection)
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'pool_pre_ping': True,
+        'pool_recycle': 3600,
+        'connect_args': {
+            '_socket_timeout': 60,
+        }
+    }
     
     # Upload settings
     UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'uploads')

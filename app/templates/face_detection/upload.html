@@ -439,21 +439,21 @@ async function loadRecentUploadDetections() {
                     }
                 }
                 
+                const totalFaces = objects.length;
                 const faces = objects.filter(obj => obj.name && obj.name !== 'Unknown');
                 const recognizedCount = faces.length;
                 
-                // Add 7 hours for GMT+7
+                // Timestamp is already in local time
                 const timestamp = new Date(detection.timestamp);
-                timestamp.setHours(timestamp.getHours() + 7);
                 
                 html += `
                     <div class="bg-gray-800 rounded-lg overflow-hidden">
-                        <img src="/detection/uploads/${detection.image_path}" alt="Face Detection" class="w-full h-40 object-cover">
+                        <img src="/detection/uploads/annotated_${detection.image_path}" alt="Face Detection" class="w-full h-40 object-cover" onerror="this.src='/detection/uploads/${detection.image_path}'">
                         <div class="p-4">
                             <div class="flex items-center justify-between mb-2">
                                 <span class="text-white font-medium">Face Detection</span>
                                 <span class="bg-blue-600 text-white text-xs px-2 py-1 rounded-full">
-                                    ${recognizedCount} face(s)
+                                    ${totalFaces} face(s)
                                 </span>
                             </div>
                             <p class="text-sm text-gray-400 mb-3">${timestamp.toLocaleDateString('vi-VN')} ${timestamp.toLocaleTimeString('vi-VN')}</p>

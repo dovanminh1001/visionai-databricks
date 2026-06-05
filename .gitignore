@@ -130,7 +130,7 @@ instance/
 *.sqlite
 
 # Docker
-.dockerignore
+# .dockerignore
 
 # IDE
 .vscode/

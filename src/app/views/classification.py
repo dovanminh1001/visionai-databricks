@@ -142,6 +142,9 @@ def classify_camera():
         nparr = np.frombuffer(image_bytes, np.uint8)
         img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
         
+        if img is None:
+            return jsonify({'error': 'Invalid image data'}), 400
+        
         # Perform object classification
         start_time = time.time()
         classification_results = classification_service.classify_objects(img)

@@ -275,4 +275,8 @@ def draw_color_palette(img, colors):
 @color_detection_bp.route('/uploads/<filename>')
 @login_required
 def uploaded_file(filename):
-    return send_file(os.path.join(current_app.config['UPLOAD_FOLDER'], filename))
+    try:
+        from flask import send_from_directory
+        return send_from_directory(current_app.config['UPLOAD_FOLDER'], filename)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 404

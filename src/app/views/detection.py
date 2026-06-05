@@ -177,7 +177,11 @@ def detect_image():
 @detection_bp.route('/uploads/<filename>')
 @login_required
 def uploaded_file(filename):
-    return send_file(os.path.join(current_app.config['UPLOAD_FOLDER'], filename))
+    try:
+        from flask import send_from_directory
+        return send_from_directory(current_app.config['UPLOAD_FOLDER'], filename)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 404
 
 @detection_bp.route('/detect_camera', methods=['POST'])
 @login_required
@@ -200,6 +204,9 @@ def detect_camera():
         import numpy as np
         nparr = np.frombuffer(image_bytes, np.uint8)
         img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        
+        if img is None:
+            return jsonify({'error': 'Invalid image data'}), 400
         
         # Perform detection
         start_time = time.time()

@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, jsonify, redirect, url_for, current_app, send_file
+from flask import Blueprint, render_template, request, jsonify, redirect, url_for, current_app, send_file, flash
 from flask_login import login_required, current_user
 from app.models.user import User
 from app.models.detection import Detection, db
@@ -19,14 +19,22 @@ def index():
 @main_bp.route('/dashboard')
 @login_required
 def dashboard():
-    # Get statistics
-    total_detections = Detection.query.filter_by(user_id=current_user.id).count()
-    camera_scans = Detection.query.filter_by(user_id=current_user.id, detection_type='camera').count()
-    image_analysis = Detection.query.filter_by(user_id=current_user.id, detection_type='upload').count()
-    
+    # Get statistics based on role
+    if current_user.is_admin():
+        # Admin: see all statistics across the entire system
+        total_detections = Detection.query.count()
+        camera_scans = Detection.query.filter_by(detection_type='camera').count()
+        image_analysis = Detection.query.filter_by(detection_type='upload').count()
+        detections = Detection.query.all()
+    else:
+        # Regular user: see only their own personal statistics
+        total_detections = Detection.query.filter_by(user_id=current_user.id).count()
+        camera_scans = Detection.query.filter_by(user_id=current_user.id, detection_type='camera').count()
+        image_analysis = Detection.query.filter_by(user_id=current_user.id, detection_type='upload').count()
+        detections = Detection.query.filter_by(user_id=current_user.id).all()
+        
     # Get total objects found
     objects_found = 0
-    detections = Detection.query.filter_by(user_id=current_user.id).all()
     for detection in detections:
         objects = detection.get_objects_detected()
         objects_found += len(objects)
@@ -167,6 +175,14 @@ def delete_detection_api(detection_id):
         db.session.delete(detection)
         db.session.commit()
         
+        # Trigger background pipeline update to sync Silver and Gold tables
+        try:
+            from threading import Thread
+            from app.services.db_service import trigger_pipeline_update
+            Thread(target=trigger_pipeline_update).start()
+        except Exception as te:
+            print(f"DEBUG: Failed to trigger background pipeline update: {te}")
+        
         print(f"Successfully deleted detection {detection_id}")
         return jsonify({'success': True, 'message': 'Detection deleted successfully'})
     except Exception as e:
@@ -189,9 +205,17 @@ def delete_all_detections_api():
                 if os.path.exists(image_path):
                     os.remove(image_path)
         
-        # Delete all detections from database
-        Detection.query.filter_by(user_id=current_user.id).delete()
+        # Delete all detections from database in bulk
+        Detection.query.filter_by(user_id=current_user.id).delete(synchronize_session=False)
         db.session.commit()
+        
+        # Trigger background pipeline update to sync Silver and Gold tables
+        try:
+            from threading import Thread
+            from app.services.db_service import trigger_pipeline_update
+            Thread(target=trigger_pipeline_update).start()
+        except Exception as te:
+            print(f"DEBUG: Failed to trigger background pipeline update: {te}")
         
         return jsonify({'success': True, 'message': 'All detections deleted successfully'})
     except Exception as e:
@@ -473,6 +497,14 @@ def delete_detection(detection_id):
     db.session.delete(detection)
     db.session.commit()
     
+    # Trigger background pipeline update to sync Silver and Gold tables
+    try:
+        from threading import Thread
+        from app.services.db_service import trigger_pipeline_update
+        Thread(target=trigger_pipeline_update).start()
+    except Exception as te:
+        print(f"DEBUG: Failed to trigger background pipeline update: {te}")
+    
     return jsonify({'success': True, 'message': 'Detection deleted successfully'})
 
 @main_bp.route('/api/detections/delete-all', methods=['DELETE'])
@@ -497,11 +529,21 @@ def delete_all_detections():
         except Exception as e:
             print(f"Error deleting image file {detection.image_path}: {e}")
     
-    # Delete all database records
-    for detection in detections:
-        db.session.delete(detection)
+    # Delete all database records in bulk to prevent transaction conflicts in Databricks
+    if detection_type != 'all':
+        Detection.query.filter_by(user_id=current_user.id, detection_type=detection_type).delete(synchronize_session=False)
+    else:
+        Detection.query.filter_by(user_id=current_user.id).delete(synchronize_session=False)
     
     db.session.commit()
+    
+    # Trigger background pipeline update to sync Silver and Gold tables
+    try:
+        from threading import Thread
+        from app.services.db_service import trigger_pipeline_update
+        Thread(target=trigger_pipeline_update).start()
+    except Exception as te:
+        print(f"DEBUG: Failed to trigger background pipeline update: {te}")
     
     return jsonify({'success': True, 'message': f'All {detection_type} detections deleted successfully'})
 
@@ -592,13 +634,20 @@ def delete_user_account(user_id):
             except Exception as e:
                 print(f"DEBUG: Error deleting image file {image_path}: {e}")
         
-        # Delete all detection records
-        for detection in detections:
-            db.session.delete(detection)
+        # Delete all detection records in bulk to prevent transaction conflicts in Databricks
+        Detection.query.filter_by(user_id=user_id).delete(synchronize_session=False)
         
         # Delete user account
         db.session.delete(user)
         db.session.commit()
+        
+        # Trigger background pipeline update to sync Silver and Gold tables
+        try:
+            from threading import Thread
+            from app.services.db_service import trigger_pipeline_update
+            Thread(target=trigger_pipeline_update).start()
+        except Exception as te:
+            print(f"DEBUG: Failed to trigger background pipeline update: {te}")
         
         print(f"DEBUG: Successfully deleted user {user_id} and {len(detections)} detections")
         print(f"DEBUG: Deleted {deleted_files} image files")
@@ -746,3 +795,4 @@ def _draw_detection_boxes(img, objects_detected, confidence_scores):
         y_position += 30
     
     return annotated_img
+

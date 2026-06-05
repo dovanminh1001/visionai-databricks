@@ -325,6 +325,7 @@ function updateFPS() {
 
 async function performRealTimeDetection() {
     if (!stream || !isDetecting || isProcessingFrame) return;
+    if (videoElement.videoWidth === 0 || videoElement.videoHeight === 0) return;
     
     // Frame skipping - only process if enough time has passed
     const currentTime = performance.now();
@@ -350,7 +351,7 @@ async function performRealTimeDetection() {
         
         // Send scale factor to server for coordinate adjustment
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
         
         const response = await fetch('/face-detection/detect-camera', {
             method: 'POST',
@@ -390,8 +391,8 @@ async function performRealTimeDetection() {
                 detectionStatus.className = 'absolute top-4 right-4 bg-green-600 px-3 py-1 rounded-full text-white text-sm';
             }
             
-            // Refresh recent detections less frequently
-            if (frameCount % 15 === 0) { // Every 5 seconds at 3 FPS
+            // Refresh recent detections immediately when a new detection is saved
+            if (result.detection_id) {
                 loadRecentDetections();
             }
         }

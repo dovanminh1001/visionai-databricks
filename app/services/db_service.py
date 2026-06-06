@@ -241,6 +241,37 @@ def trigger_pipeline_update():
         logger.error("[DB-Pipeline] Failed background sync: %s", str(e), exc_info=True)
 
 
+def _upload_to_hf_async(filepath: str, filename: str):
+    """
+    Tải file ảnh lên Hugging Face Dataset dưới nền (bất đồng bộ)
+    """
+    import os
+    token = os.environ.get('HF_TOKEN')
+    if not token:
+        logger.warning("[HF] HF_TOKEN is not set in environment variables. Skipping upload.")
+        return
+
+    repo_id = os.environ.get('HF_DATASET', 'dovanminh100104/visionai-user-images')
+    from threading import Thread
+    
+    def run():
+        try:
+            from huggingface_hub import HfApi
+            api = HfApi()
+            api.upload_file(
+                path_or_fileobj=filepath,
+                path_in_repo=f"data/{filename}",
+                repo_id=repo_id,
+                repo_type="dataset",
+                token=token
+            )
+            logger.info("[HF] Uploaded file '%s' to Hugging Face successfully", filename)
+        except Exception as e:
+            logger.error("[HF] Failed to upload file '%s' to Hugging Face: %s", filename, str(e))
+
+    Thread(target=run).start()
+
+
 def _save_image(image, prefix: str) -> str:
     """
     Lưu numpy image array ra file .jpg trong thư mục UPLOAD_FOLDER.
@@ -253,6 +284,7 @@ def _save_image(image, prefix: str) -> str:
 
     if image is not None:
         cv2.imwrite(filepath, image)
+        _upload_to_hf_async(filepath, filename)
     else:
         # Tạo file placeholder nếu không có ảnh
         logger.warning("[DB] No image provided for detection type '%s', saving placeholder.", prefix)
@@ -273,6 +305,7 @@ def save_annotated_image(image, original_filename: str) -> str:
     )
     if image is not None:
         cv2.imwrite(annotated_filepath, image)
+        _upload_to_hf_async(annotated_filepath, annotated_filename)
     return annotated_filename
 
 

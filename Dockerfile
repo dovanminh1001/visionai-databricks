@@ -41,5 +41,15 @@ ENV PYTHONPATH=/app
 ENV FLASK_APP=run.py
 ENV FLASK_ENV=production
 
-# Run the application using Gunicorn on the Render-injected PORT (defaults to 10000)
-CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-10000} run:app"]
+# Limit PyTorch threads to reduce memory bloating
+ENV OMP_NUM_THREADS=1
+ENV MKL_NUM_THREADS=1
+ENV OPENBLAS_NUM_THREADS=1
+ENV VECLIB_MAXIMUM_THREADS=1
+ENV NUMEXPR_NUM_THREADS=1
+
+# Disable Hugging Face progress bars to reduce log bloat and overhead
+ENV HF_HUB_DISABLE_PROGRESS_BARS=1
+
+# Run the application using Gunicorn with strict single-worker/single-thread configuration to save RAM
+CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-10000} --workers 1 --threads 1 --timeout 120 run:app"]

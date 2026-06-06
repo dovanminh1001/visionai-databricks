@@ -21,6 +21,9 @@ def get_model():
     global model
     if model is None:
         import torch
+        # Limit PyTorch threads to reduce memory footprint on CPU
+        torch.set_num_threads(1)
+        
         # Monkey patch torch.load to use weights_only=False for YOLO
         original_torch_load = torch.load
         def patched_torch_load(*args, **kwargs):

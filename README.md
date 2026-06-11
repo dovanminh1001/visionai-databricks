@@ -85,6 +85,36 @@ graph TB
 
 ---
 
+## 📸 Screen Demos & Platform Integration
+
+Here are some screenshots demonstrating the frontend web application and the Databricks Lakehouse data engineering backend:
+
+### 1. Web Application - Dashboard Overview
+The main dashboard provides real-time statistics of total detections, quick shortcuts to all 5 AI features, recent activity stream, and connection status.
+<p align="center">
+  <img src="docs/images/dashboard_overview.png" alt="Dashboard Overview" width="90%"/>
+</p>
+
+### 2. Web Application - Activity Log & Admin Panel
+The admin area provides user management and a comprehensive detection log. Admins can view detailed parameters of each detection, download CSV records, and manage account details.
+<p align="center">
+  <img src="docs/images/activity_log.png" alt="Activity Log & Admin Panel" width="90%"/>
+</p>
+
+### 3. Databricks - Unity Catalog (Bronze Layer)
+Detection events and metadata are sent directly to the Databricks Unity Catalog (`bronze.raw_detections`), providing a centralized, secure, and governed audit trail.
+<p align="center">
+  <img src="docs/images/databricks_catalog.png" alt="Databricks Unity Catalog" width="90%"/>
+</p>
+
+### 4. Databricks - Workflow Jobs & Pipelines
+Automated jobs manage the pipeline lifecycle on Databricks: scheduling ingestion (every 15 min), system monitoring analytics updates (every hour), and daily machine learning model evaluation runs.
+<p align="center">
+  <img src="docs/images/databricks_jobs.png" alt="Databricks Workflow Jobs" width="90%"/>
+</p>
+
+---
+
 ## 🚀 Quick Start
 
 ### Prerequisites

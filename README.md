@@ -353,7 +353,7 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
     <td align="center">
       <a href="https://github.com/dovanminh1001">
         <sub><b>Đỗ Văn Minh</b></sub>
-        <sub><b>Võ Trần Gia Huy</b></sub>
+        <sub><b>- Võ Trần Gia Huy</b></sub>
       </a>
     </td>
   </tr>

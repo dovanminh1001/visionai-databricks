@@ -352,8 +352,8 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
   <tr>
     <td align="center">
       <a href="https://github.com/dovanminh1001">
-        <img src="https://github.com/dovanminh1001.png" width="80px;" alt="dovanminh1001"/><br />
         <sub><b>Đỗ Văn Minh</b></sub>
+        <sub><b>Võ Trần Gia Huy</b></sub>
       </a>
     </td>
   </tr>
